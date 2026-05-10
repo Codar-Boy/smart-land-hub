@@ -46,27 +46,15 @@ async function initDB() {
     `);
 
     // Create settings table
-await pool.query(`
-  CREATE TABLE IF NOT EXISTS settings (
-    id SERIAL PRIMARY KEY,
-
-    business_name VARCHAR(100),
-
-    address TEXT,
-
-    mobile VARCHAR(20),
-
-    email VARCHAR(100),
-
-    logo TEXT,
-
-    upi_id VARCHAR(100),
-
-    invoice_prefix VARCHAR(20),
-
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  )
-`);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS settings (
+        id SERIAL PRIMARY KEY,
+        business_name VARCHAR(100),
+        address TEXT,
+        mobile VARCHAR(20),
+        upi_id VARCHAR(100)
+      )
+    `);
 
     // Create service_types table
     await pool.query(`
