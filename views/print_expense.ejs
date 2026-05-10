@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Expense Voucher - <%= e.id %></title>
+    <style>
+        body { font-family: sans-serif; padding: 40px; }
+        .voucher-box { max-width: 600px; margin: auto; border: 2px solid #333; padding: 30px; }
+        .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
+        .header p { margin: 2px 0; color: #666; font-size: 14px; }
+        .row { display: flex; justify-content: space-between; margin-bottom: 15px; }
+        .label { font-weight: bold; }
+        .content { border-bottom: 1px dotted #333; flex-grow: 1; margin-left: 10px; }
+        .footer { margin-top: 50px; display: flex; justify-content: space-between; }
+        .sig { border-top: 1px solid #333; width: 150px; text-align: center; padding-top: 5px; }
+        @media print { .no-print { display: none; } }
+    </style>
+</head>
+<body>
+    <div class="no-print" style="text-align: center; margin-bottom: 20px;">
+        <button onclick="window.print()">Print Voucher</button>
+        <button onclick="window.close()">Close</button>
+    </div>
+
+    <div class="voucher-box">
+        <div class="header">
+            <h1><%= config.business_name %></h1>
+            <p><%= config.address %> | <%= config.mobile %></p>
+            <h2>PAYMENT VOUCHER</h2>
+        </div>
+
+        <div class="row">
+            <div><span class="label">Voucher No:</span> #<%= e.id %></div>
+            <div><span class="label">Date:</span> <%= new Date(e.date).toLocaleDateString() %></div>
+        </div>
+
+        <div class="row">
+            <span class="label">Paid For:</span>
+            <span class="content"><%= e.description %></span>
+        </div>
+
+        <div class="row">
+            <span class="label">Category:</span>
+            <span class="content"><%= e.category %></span>
+        </div>
+
+        <div class="row" style="margin-top: 30px;">
+            <span class="label" style="font-size: 20px;">Amount Paid:</span>
+            <span class="content" style="font-size: 24px; font-weight: bold;">₹<%= e.amount %></span>
+        </div>
+
+        <div class="footer">
+            <div class="sig">Receiver's Signature</div>
+            <div class="sig">Authorized By</div>
+        </div>
+    </div>
+
+    <script>
+        window.onload = function() {
+            setTimeout(() => { window.print(); }, 500);
+        };
+    </script>
+</body>
+</html>

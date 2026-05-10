@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Day Book - <%= new Date(targetDate).toLocaleDateString() %></title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Cambria', Georgia, serif; padding: 30px; background: #f5f5f5; color: #333; }
+        .report-container { max-width: 800px; margin: 0 auto; background: #fff; border: 1px solid #ddd; }
+        
+        .report-header { padding: 30px; border-bottom: 3px solid #000; text-align: center; }
+        .report-header h1 { font-size: 1.5rem; margin-bottom: 3px; }
+        .report-header .subtitle { font-size: 0.85rem; color: #666; }
+        .report-header .report-title { font-size: 1.2rem; text-transform: uppercase; letter-spacing: 3px; margin-top: 15px; background: #000; color: #fff; display: inline-block; padding: 8px 25px; }
+        .report-header .report-date { margin-top: 12px; font-size: 1rem; font-weight: bold; }
+        
+        .section { padding: 20px 30px; }
+        .section h3 { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px; color: #000; border-bottom: 1px solid #ddd; padding-bottom: 8px; margin-bottom: 15px; }
+        
+        .data-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+        .data-table th { background: #f8f8f8; padding: 10px 12px; text-align: left; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid #000; }
+        .data-table td { padding: 10px 12px; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+        .data-table .amount { text-align: right; font-family: 'Courier New', monospace; }
+        .data-table .subtotal-row { background: #f0f0f0; font-weight: bold; }
+        
+        .summary-box { margin: 20px 30px; border: 2px solid #000; padding: 20px; }
+        .summary-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 1rem; }
+        .summary-row.net { border-top: 2px solid #000; padding-top: 15px; margin-top: 10px; font-size: 1.2rem; font-weight: bold; }
+        
+        .footer-bar { padding: 15px 30px; background: #000; color: #fff; font-size: 0.75rem; text-align: center; letter-spacing: 1px; }
+        
+        .no-print { text-align: center; margin-bottom: 20px; }
+        .no-print button { font-family: inherit; padding: 10px 25px; margin: 0 5px; border: 1px solid #000; cursor: pointer; font-weight: bold; }
+        .no-print .print-btn { background: #000; color: #fff; }
+        .no-print .close-btn { background: #fff; color: #000; }
+        @media print { .no-print { display: none; } body { padding: 0; background: #fff; } .report-container { border: none; } }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <button class="print-btn" onclick="window.print()">🖨 Print Day Book</button>
+        <button class="close-btn" onclick="window.close()">✕ Close</button>
+    </div>
+
+    <div class="report-container">
+        <div class="report-header">
+            <h1><%= config.business_name || 'Business Name' %></h1>
+            <% if (config.address) { %><p class="subtitle"><%= config.address %></p><% } %>
+            <% if (config.mobile) { %><p class="subtitle">📞 <%= config.mobile %></p><% } %>
+            <div class="report-title">Daily Cash Book</div>
+            <p class="report-date"><%= new Date(targetDate).toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }) %></p>
+        </div>
+
+        <!-- Income Section -->
+        <div class="section">
+            <h3>📥 Income (Services Rendered)</h3>
+            <table class="data-table">
+                <thead>
+                    <tr><th>#</th><th>Customer</th><th>Service</th><th class="amount">Billed</th><th class="amount">Received</th><th class="amount">Due</th></tr>
+                </thead>
+                <tbody>
+                    <% let totalBilled=0, totalReceived=0, totalDue=0; %>
+                    <% if (locals.sales && sales.length > 0) { %>
+                        <% sales.forEach(function(s, i) { 
+                            totalBilled += parseFloat(s.total_amount || 0);
+                            totalReceived += parseFloat(s.received_amount || 0);
+                            totalDue += parseFloat(s.due_amount || 0);
+                        %>
+                            <tr>
+                                <td><%= i+1 %></td>
+                                <td><%= s.customer_name %></td>
+                                <td><%= s.service_type %></td>
+                                <td class="amount">₹<%= parseFloat(s.total_amount).toFixed(2) %></td>
+                                <td class="amount">₹<%= parseFloat(s.received_amount).toFixed(2) %></td>
+                                <td class="amount">₹<%= parseFloat(s.due_amount).toFixed(2) %></td>
+                            </tr>
+                        <% }); %>
+                        <tr class="subtotal-row">
+                            <td colspan="3" style="text-align: right;">SUBTOTAL</td>
+                            <td class="amount">₹<%= totalBilled.toFixed(2) %></td>
+                            <td class="amount">₹<%= totalReceived.toFixed(2) %></td>
+                            <td class="amount">₹<%= totalDue.toFixed(2) %></td>
+                        </tr>
+                    <% } else { %>
+                        <tr><td colspan="6" style="text-align: center; color: #999;">No services recorded for this date</td></tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Expense Section -->
+        <div class="section">
+            <h3>📤 Expenses (Outgoings)</h3>
+            <table class="data-table">
+                <thead>
+                    <tr><th>#</th><th>Description</th><th>Category</th><th class="amount">Amount</th></tr>
+                </thead>
+                <tbody>
+                    <% let totalExpenses=0; %>
+                    <% if (locals.costs && costs.length > 0) { %>
+                        <% costs.forEach(function(e, i) { totalExpenses += parseFloat(e.amount || 0); %>
+                            <tr>
+                                <td><%= i+1 %></td>
+                                <td><%= e.description %></td>
+                                <td><%= e.category %></td>
+                                <td class="amount">₹<%= parseFloat(e.amount).toFixed(2) %></td>
+                            </tr>
+                        <% }); %>
+                        <tr class="subtotal-row">
+                            <td colspan="3" style="text-align: right;">SUBTOTAL</td>
+                            <td class="amount">₹<%= totalExpenses.toFixed(2) %></td>
+                        </tr>
+                    <% } else { %>
+                        <tr><td colspan="4" style="text-align: center; color: #999;">No expenses recorded for this date</td></tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Summary -->
+        <div class="summary-box">
+            <div class="summary-row"><span>Total Cash Received:</span><span>₹<%= totalReceived.toFixed(2) %></span></div>
+            <div class="summary-row"><span>Total Expenses:</span><span style="color: red;">- ₹<%= totalExpenses.toFixed(2) %></span></div>
+            <div class="summary-row"><span>New Dues Created:</span><span>₹<%= totalDue.toFixed(2) %></span></div>
+            <div class="summary-row net"><span>Net Cash Balance:</span><span>₹<%= (totalReceived - totalExpenses).toFixed(2) %></span></div>
+        </div>
+
+        <div class="footer-bar">
+            Generated on <%= new Date().toLocaleString() %> • This is a system-generated report
+        </div>
+    </div>
+</body>
+</html>

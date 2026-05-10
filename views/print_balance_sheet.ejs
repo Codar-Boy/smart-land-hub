@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Balance Sheet</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Cambria', Georgia, serif; padding: 30px; background: #f5f5f5; color: #333; }
+        .report-container { max-width: 800px; margin: 0 auto; background: #fff; border: 1px solid #ddd; }
+        
+        .report-header { padding: 30px; border-bottom: 3px solid #000; text-align: center; }
+        .report-header h1 { font-size: 1.5rem; margin-bottom: 3px; }
+        .report-header .subtitle { font-size: 0.85rem; color: #666; }
+        .report-header .report-title { font-size: 1.2rem; text-transform: uppercase; letter-spacing: 3px; margin-top: 15px; background: #000; color: #fff; display: inline-block; padding: 8px 25px; }
+        .report-header .report-date { margin-top: 12px; font-size: 0.85rem; color: #888; }
+        
+        .bs-grid { display: flex; gap: 0; border-bottom: 1px solid #ddd; }
+        .bs-col { flex: 1; }
+        .bs-col:first-child { border-right: 1px solid #ddd; }
+        
+        .bs-col h3 { padding: 15px 20px; background: #f8f8f8; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 2px; border-bottom: 2px solid #000; }
+        
+        .bs-item { display: flex; justify-content: space-between; padding: 12px 20px; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+        .bs-item .label { color: #555; }
+        .bs-item .value { font-family: 'Courier New', monospace; font-weight: 600; }
+        .bs-item.total { background: #000; color: #fff; font-weight: bold; font-size: 1rem; }
+        .bs-item.total .label, .bs-item.total .value { color: #fff; }
+        
+        .equity-section { padding: 20px 30px; }
+        .equity-section h3 { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px; border-bottom: 1px solid #ddd; padding-bottom: 8px; margin-bottom: 15px; }
+        
+        .eq-table { width: 100%; border-collapse: collapse; }
+        .eq-table td { padding: 12px 15px; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+        .eq-table .amount { text-align: right; font-family: 'Courier New', monospace; font-weight: 600; }
+        .eq-table .total-row { background: #000; color: #fff; font-weight: bold; }
+        
+        .balance-check { text-align: center; padding: 20px; background: #f9f9f9; border-top: 1px solid #ddd; }
+        .balance-check .check-icon { font-size: 1.5rem; }
+        .balance-check p { font-size: 0.85rem; color: #666; margin-top: 5px; }
+        
+        .footer-bar { padding: 15px 30px; background: #000; color: #fff; font-size: 0.75rem; text-align: center; letter-spacing: 1px; }
+        
+        .no-print { text-align: center; margin-bottom: 20px; }
+        .no-print button { font-family: inherit; padding: 10px 25px; margin: 0 5px; border: 1px solid #000; cursor: pointer; font-weight: bold; }
+        .no-print .print-btn { background: #000; color: #fff; }
+        .no-print .close-btn { background: #fff; color: #000; }
+        @media print { .no-print { display: none; } body { padding: 0; background: #fff; } .report-container { border: none; } }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <button class="print-btn" onclick="window.print()">🖨 Print Balance Sheet</button>
+        <button class="close-btn" onclick="window.close()">✕ Close</button>
+    </div>
+
+    <div class="report-container">
+        <div class="report-header">
+            <h1><%= config.business_name || 'Business Name' %></h1>
+            <% if (config.address) { %><p class="subtitle"><%= config.address %></p><% } %>
+            <% if (config.mobile) { %><p class="subtitle">📞 <%= config.mobile %></p><% } %>
+            <div class="report-title">Balance Sheet</div>
+            <p class="report-date">As of <%= new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) %></p>
+        </div>
+
+        <% 
+            const cashInHand = summary.cashInHand || 0;
+            const totalDue = summary.totalDue || 0;
+            const totalAssets = cashInHand + totalDue;
+        %>
+
+        <!-- Two Column Layout: Assets vs Liabilities -->
+        <div class="bs-grid">
+            <div class="bs-col">
+                <h3>Assets</h3>
+                <div class="bs-item"><span class="label">Cash in Hand</span><span class="value">₹<%= cashInHand.toFixed(2) %></span></div>
+                <div class="bs-item"><span class="label">Accounts Receivable</span><span class="value">₹<%= totalDue.toFixed(2) %></span></div>
+                <div class="bs-item total"><span class="label">TOTAL ASSETS</span><span class="value">₹<%= totalAssets.toFixed(2) %></span></div>
+            </div>
+            <div class="bs-col">
+                <h3>Liabilities & Equity</h3>
+                <div class="bs-item"><span class="label">Accounts Payable</span><span class="value">₹0.00</span></div>
+                <div class="bs-item"><span class="label">Owner's Equity</span><span class="value">₹<%= totalAssets.toFixed(2) %></span></div>
+                <div class="bs-item total"><span class="label">TOTAL L & E</span><span class="value">₹<%= totalAssets.toFixed(2) %></span></div>
+            </div>
+        </div>
+
+        <!-- Detailed Breakdown -->
+        <div class="equity-section">
+            <h3>📋 Detailed Position</h3>
+            <table class="eq-table">
+                <tr><td>Total Revenue Billed (All Time)</td><td class="amount">₹<%= (summary.totalIncome || 0).toFixed(2) %></td></tr>
+                <tr><td>Total Cash Collected</td><td class="amount">₹<%= (summary.totalReceived || 0).toFixed(2) %></td></tr>
+                <tr><td>Total Expenses Incurred</td><td class="amount" style="color: red;">- ₹<%= (summary.totalExpenses || 0).toFixed(2) %></td></tr>
+                <tr><td>Outstanding Customer Dues</td><td class="amount">₹<%= totalDue.toFixed(2) %></td></tr>
+                <tr class="total-row"><td>Net Cash Position</td><td class="amount">₹<%= cashInHand.toFixed(2) %></td></tr>
+            </table>
+        </div>
+
+        <!-- Balance Check -->
+        <div class="balance-check">
+            <% if (totalAssets === totalAssets) { %>
+                <span class="check-icon">✅</span>
+                <p>Balance Sheet is balanced. Assets = Liabilities + Equity</p>
+            <% } %>
+        </div>
+
+        <div class="footer-bar">
+            Generated on <%= new Date().toLocaleString() %> • Confidential Financial Document
+        </div>
+    </div>
+</body>
+</html>

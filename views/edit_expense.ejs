@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Edit Expense</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <header>
+        <a href="/dashboard/expenses">← Back to Expenses</a>
+        <h1>Edit Expense Record (ID: <%= e.id %>)</h1>
+    </header>
+    <hr>
+    
+    <fieldset>
+        <legend>Update Expense Details</legend>
+        <form action="/expenses/edit/<%= e.id %>" method="POST">
+            <table border="0" cellpadding="5">
+                <tr>
+                    <td>Date:</td>
+                    <td><input type="date" name="date" required value="<%= e.date ? new Date(e.date).toISOString().split('T')[0] : '' %>"></td>
+                </tr>
+                <tr>
+                    <td>Description:</td>
+                    <td><input type="text" name="description" required value="<%= e.description %>" style="width: 300px;"></td>
+                </tr>
+                <tr>
+                    <td>Amount:</td>
+                    <td><input type="number" name="amount" step="0.01" required value="<%= e.amount %>"></td>
+                </tr>
+                <tr>
+                    <td>Category:</td>
+                    <td>
+                        <select name="category">
+                            <% ['Utilities', 'Rent', 'Salary', 'Supplies', 'Marketing', 'Others'].forEach(opt => { %>
+                                <option <%= e.category === opt ? 'selected' : '' %>><%= opt %></option>
+                            <% }) %>
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="2">
+                        <br>
+                        <button type="submit">Update Expense</button>
+                        <a href="/dashboard/expenses"><button type="button">Cancel</button></a>
+                    </td>
+                </tr>
+            </table>
+        </form>
+    </fieldset>
+
+    <div style="margin-top: 30px; font-size: 12px; color: #666;">
+        Logged in as: <%= username %>
+    </div>
+</body>
+</html>

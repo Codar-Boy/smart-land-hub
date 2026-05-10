@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Invoice #<%= s.id %></title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Cambria', Georgia, serif; padding: 30px; background: #f5f5f5; color: #333; }
+        .invoice-container { max-width: 700px; margin: 0 auto; background: #fff; border: 1px solid #ddd; }
+        
+        .invoice-header { padding: 30px; border-bottom: 3px solid #000; display: flex; justify-content: space-between; align-items: flex-start; }
+        .company-info h1 { font-size: 1.6rem; margin-bottom: 5px; }
+        .company-info p { font-size: 0.85rem; color: #555; line-height: 1.6; }
+        .invoice-meta { text-align: right; }
+        .invoice-meta h2 { font-size: 2rem; letter-spacing: 3px; color: #000; margin-bottom: 10px; }
+        .invoice-meta p { font-size: 0.85rem; color: #555; }
+        .invoice-meta .inv-id { font-size: 1.1rem; font-weight: bold; color: #000; }
+        
+        .client-section { padding: 20px 30px; background: #fafafa; border-bottom: 1px solid #eee; }
+        .client-section h4 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 2px; color: #999; margin-bottom: 5px; }
+        .client-section p { font-size: 1rem; font-weight: bold; }
+        .client-section .mobile { font-weight: normal; color: #666; font-size: 0.9rem; }
+        
+        .items-section { padding: 20px 30px; }
+        .items-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .items-table th { background: #000; color: #fff; padding: 12px 15px; text-align: left; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; }
+        .items-table td { padding: 12px 15px; border-bottom: 1px solid #eee; }
+        .items-table .amount { text-align: right; }
+        
+        .totals-section { padding: 20px 30px; display: flex; justify-content: flex-end; }
+        .totals-box { width: 280px; }
+        .totals-box .row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 0.95rem; }
+        .totals-box .row.total { border-top: 2px solid #000; padding-top: 12px; margin-top: 5px; font-weight: bold; font-size: 1.1rem; }
+        .totals-box .row.due { color: red; }
+        
+        .payment-footer { padding: 25px 30px; border-top: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .qr-section { text-align: center; }
+        .qr-section img { width: 120px; height: 120px; border: 1px solid #ddd; padding: 3px; }
+        .qr-section p { font-size: 0.75rem; color: #888; margin-top: 5px; }
+        .thank-you { text-align: right; }
+        .thank-you p { font-size: 0.85rem; color: #777; }
+        .thank-you .upi-id { font-family: monospace; font-size: 0.9rem; color: #000; background: #f0f0f0; padding: 3px 8px; display: inline-block; margin-top: 5px; }
+        
+        .terms-bar { padding: 15px 30px; background: #000; color: #fff; font-size: 0.75rem; text-align: center; letter-spacing: 1px; }
+        
+        .no-print { text-align: center; margin-bottom: 20px; }
+        .no-print button { font-family: inherit; padding: 10px 25px; margin: 0 5px; border: 1px solid #000; cursor: pointer; font-weight: bold; }
+        .no-print .print-btn { background: #000; color: #fff; }
+        .no-print .close-btn { background: #fff; color: #000; }
+        @media print { .no-print { display: none; } body { padding: 0; background: #fff; } .invoice-container { border: none; } }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <button class="print-btn" onclick="window.print()">🖨 Print Invoice</button>
+        <button class="close-btn" onclick="window.close()">✕ Close</button>
+    </div>
+
+    <div class="invoice-container">
+        <!-- Header -->
+        <div class="invoice-header">
+            <div class="company-info">
+                <h1><%= config.business_name || 'Service Provider' %></h1>
+                <% if (config.address) { %><p><%= config.address %></p><% } %>
+                <% if (config.mobile) { %><p>📞 <%= config.mobile %></p><% } %>
+            </div>
+            <div class="invoice-meta">
+                <h2>INVOICE</h2>
+                <p class="inv-id">#INV-<%= String(s.id).padStart(4, '0') %></p>
+                <p>Date: <%= new Date(s.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) %></p>
+            </div>
+        </div>
+
+        <!-- Client -->
+        <div class="client-section">
+            <h4>Billed To</h4>
+            <p><%= s.customer_name %></p>
+            <% if (s.mobile_no) { %><p class="mobile">📱 <%= s.mobile_no %></p><% } %>
+        </div>
+
+        <!-- Items -->
+        <div class="items-section">
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Service Description</th>
+                        <th class="amount">Amount (₹)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1</td>
+                        <td><%= s.service_type %></td>
+                        <td class="amount">₹<%= parseFloat(s.total_amount).toFixed(2) %></td>
+                    </tr>
+                </tbody>
+            </table>
+            <% if (s.notes) { %>
+                <div style="margin-top: 20px; padding: 10px; background: #f9f9f9; border-left: 4px solid #000;">
+                    <strong>Notes:</strong><br>
+                    <%= s.notes.replace(/\n/g, '<br>') %>
+                </div>
+            <% } %>
+        </div>
+
+        <!-- Totals -->
+        <div class="totals-section">
+            <div class="totals-box">
+                <div class="row"><span>Subtotal:</span><span>₹<%= parseFloat(s.total_amount).toFixed(2) %></span></div>
+                <div class="row"><span>Received:</span><span>₹<%= parseFloat(s.received_amount).toFixed(2) %></span></div>
+                <% if (parseFloat(s.due_amount) > 0) { %>
+                    <div class="row due total"><span>Balance Due:</span><span>₹<%= parseFloat(s.due_amount).toFixed(2) %></span></div>
+                <% } else { %>
+                    <div class="row total" style="color: green;"><span>Status:</span><span>PAID IN FULL</span></div>
+                <% } %>
+            </div>
+        </div>
+
+        <!-- Payment QR & Footer -->
+        <div class="payment-footer">
+            <% if (config.upi_id && parseFloat(s.due_amount) > 0) { %>
+                <div class="qr-section">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi://pay?pa=<%= config.upi_id %>&pn=<%= encodeURIComponent(config.business_name || 'Payment') %>&am=<%= s.due_amount %>&cu=INR" alt="UPI QR">
+                    <p>Scan to Pay ₹<%= s.due_amount %></p>
+                </div>
+            <% } else if (config.upi_id) { %>
+                <div class="qr-section">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi://pay?pa=<%= config.upi_id %>&pn=<%= encodeURIComponent(config.business_name || 'Payment') %>&cu=INR" alt="UPI QR">
+                    <p>Scan for future payments</p>
+                </div>
+            <% } else { %>
+                <div></div>
+            <% } %>
+            <div class="thank-you">
+                <p>Thank you for your business!</p>
+                <% if (config.upi_id) { %><p class="upi-id">UPI: <%= config.upi_id %></p><% } %>
+                <p style="margin-top: 30px; font-size: 0.8rem; color: #aaa;">Authorized Signature</p>
+                <hr style="width: 150px; margin-left: auto; border: none; border-top: 1px solid #ccc; margin-top: 5px;">
+            </div>
+        </div>
+
+        <!-- Terms Bar -->
+        <div class="terms-bar">
+            This is a computer-generated invoice. Payment is due upon receipt.
+        </div>
+    </div>
+</body>
+</html>

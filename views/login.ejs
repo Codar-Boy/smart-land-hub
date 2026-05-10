@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login - Secure Terminal</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="login-body">
+    <div class="login-card">
+        <h1><i class="fas fa-lock"></i> <%= locals.config && config.business_name ? config.business_name : 'TERMINAL LOGIN' %></h1>
+        <% if (locals.error) { %>
+            <div style="color: red; border: 1px solid red; padding: 10px; margin-bottom: 20px;">
+                <%= error %>
+            </div>
+        <% } %>
+        <form action="/login" method="POST">
+            <div style="text-align: left; margin-bottom: 5px;">Username:</div>
+            <input type="text" name="username" required autofocus placeholder="Admin User">
+            
+            <div style="text-align: left; margin-bottom: 5px;">Password:</div>
+            <input type="password" name="password" required placeholder="••••••••">
+            
+            <button type="submit">Authenticate <i class="fas fa-sign-in-alt"></i></button>
+        </form>
+        <p style="font-size: 0.8rem; margin-top: 20px; color: #666;">
+            SECURE SYSTEM v1.0.4
+        </p>
+    </div>
+</body>
+</html>

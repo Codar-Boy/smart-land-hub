@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Edit Service - <%= s.id %></title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body class="login-body"> <!-- Reuse login-body for centering -->
+    <div class="login-card" style="max-width: 600px; text-align: left;">
+        <header style="border-bottom: 2px solid #000; margin-bottom: 20px; padding-bottom: 10px;">
+            <a href="/dashboard/services" style="text-decoration: none; color: #000;"><i class="fas fa-arrow-left"></i> Back</a>
+            <h2 style="margin: 10px 0;"><i class="fas fa-edit"></i> Edit Service Record</h2>
+            <small>System ID: <%= s.id %></small>
+        </header>
+
+        <form action="/services/edit/<%= s.id %>" method="POST">
+            <table border="0" style="width: 100%; font-family: 'Cambria', serif;">
+                <tr>
+                    <td><i class="fas fa-calendar"></i> Date:</td>
+                    <td><input type="date" name="date" required value="<%= s.date ? new Date(s.date).toISOString().split('T')[0] : '' %>" style="width: 100%;"></td>
+                </tr>
+                <tr>
+                    <td><i class="fas fa-user"></i> Customer:</td>
+                    <td><input type="text" name="customer_name" required value="<%= s.customer_name %>" style="width: 100%;"></td>
+                </tr>
+                <tr>
+                    <td><i class="fas fa-phone"></i> Mobile:</td>
+                    <td><input type="text" name="mobile_no" value="<%= s.mobile_no %>" style="width: 100%;"></td>
+                </tr>
+                <tr>
+                    <td><i class="fas fa-tag"></i> Type:</td>
+                    <td>
+                        <select name="service_type" style="width: 100%;">
+                            <% serviceTypes.forEach(t => { %>
+                                <option <%= s.service_type === t.name ? 'selected' : '' %>><%= t.name %></option>
+                            <% }) %>
+                            <option <%= !serviceTypes.some(t => t.name === s.service_type) ? 'selected' : '' %>>Others</option>
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td><i class="fas fa-calculator"></i> Total Bill:</td>
+                    <td><input type="number" name="total_amount" id="et" step="0.01" value="<%= s.total_amount %>" style="width: 100%;" oninput="ed.value=(et.value-er.value).toFixed(2)"></td>
+                </tr>
+                <tr>
+                    <td><i class="fas fa-cash-register"></i> Received:</td>
+                    <td><input type="number" name="received_amount" id="er" step="0.01" value="<%= s.received_amount %>" style="width: 100%;" oninput="ed.value=(et.value-er.value).toFixed(2)"></td>
+                </tr>
+                <tr>
+                    <td><i class="fas fa-hand-holding-dollar"></i> Due:</td>
+                    <td><input type="number" name="due_amount" id="ed" readonly value="<%= s.due_amount %>" style="width: 100%; background: #eee;"></td>
+                </tr>
+                <tr>
+                    <td><i class="fas fa-credit-card"></i> Payment:</td>
+                    <td>
+                        <select name="payment_mode" style="width: 100%;">
+                            <% ['Cash', 'UPI', 'Due'].forEach(opt => { %>
+                                <option <%= s.payment_mode === opt ? 'selected' : '' %>><%= opt %></option>
+                            <% }) %>
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td><i class="fas fa-sticky-note"></i> Notes:</td>
+                    <td><textarea name="notes" rows="3" style="width: 100%;"><%= s.notes || '' %></textarea></td>
+                </tr>
+            </table>
+            <br>
+            <div style="display: flex; gap: 10px;">
+                <button type="submit" style="flex: 2;">Update Record <i class="fas fa-check"></i></button>
+                <a href="/dashboard/services" style="flex: 1;"><button type="button" style="width: 100%;">Cancel</button></a>
+            </div>
+        </form>
+    </div>
+</body>
+
+</html>

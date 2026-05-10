@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Profit & Loss Statement</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Cambria', Georgia, serif; padding: 30px; background: #f5f5f5; color: #333; }
+        .report-container { max-width: 800px; margin: 0 auto; background: #fff; border: 1px solid #ddd; }
+        
+        .report-header { padding: 30px; border-bottom: 3px solid #000; text-align: center; }
+        .report-header h1 { font-size: 1.5rem; margin-bottom: 3px; }
+        .report-header .subtitle { font-size: 0.85rem; color: #666; }
+        .report-header .report-title { font-size: 1.2rem; text-transform: uppercase; letter-spacing: 3px; margin-top: 15px; background: #000; color: #fff; display: inline-block; padding: 8px 25px; }
+        .report-header .report-date { margin-top: 12px; font-size: 0.85rem; color: #888; }
+        
+        .section { padding: 20px 30px; }
+        .section h3 { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px; color: #000; border-bottom: 1px solid #ddd; padding-bottom: 8px; margin-bottom: 15px; }
+        
+        .data-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+        .data-table th { background: #f8f8f8; padding: 10px 12px; text-align: left; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid #000; }
+        .data-table td { padding: 10px 12px; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+        .data-table .amount { text-align: right; font-family: 'Courier New', monospace; }
+        .data-table .subtotal-row { background: #f0f0f0; font-weight: bold; }
+        
+        .pl-summary { margin: 20px 30px; border: 2px solid #000; }
+        .pl-row { display: flex; justify-content: space-between; padding: 12px 20px; border-bottom: 1px solid #eee; font-size: 1rem; }
+        .pl-row:last-child { border-bottom: none; }
+        .pl-row.highlight { background: #000; color: #fff; font-weight: bold; font-size: 1.1rem; }
+        .pl-row .label { font-weight: 600; }
+        .pl-row .value { font-family: 'Courier New', monospace; }
+        .pl-row .negative { color: red; }
+        
+        .metric-cards { display: flex; gap: 15px; padding: 20px 30px; }
+        .metric-card { flex: 1; border: 1px solid #ddd; padding: 15px; text-align: center; }
+        .metric-card .title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: #999; margin-bottom: 8px; }
+        .metric-card .value { font-size: 1.3rem; font-weight: bold; font-family: 'Courier New', monospace; }
+        
+        .footer-bar { padding: 15px 30px; background: #000; color: #fff; font-size: 0.75rem; text-align: center; letter-spacing: 1px; }
+        
+        .no-print { text-align: center; margin-bottom: 20px; }
+        .no-print button { font-family: inherit; padding: 10px 25px; margin: 0 5px; border: 1px solid #000; cursor: pointer; font-weight: bold; }
+        .no-print .print-btn { background: #000; color: #fff; }
+        .no-print .close-btn { background: #fff; color: #000; }
+        @media print { .no-print { display: none; } body { padding: 0; background: #fff; } .report-container { border: none; } }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <button class="print-btn" onclick="window.print()">🖨 Print P&L Report</button>
+        <button class="close-btn" onclick="window.close()">✕ Close</button>
+    </div>
+
+    <div class="report-container">
+        <div class="report-header">
+            <h1><%= config.business_name || 'Business Name' %></h1>
+            <% if (config.address) { %><p class="subtitle"><%= config.address %></p><% } %>
+            <% if (config.mobile) { %><p class="subtitle">📞 <%= config.mobile %></p><% } %>
+            <div class="report-title">Profit & Loss Statement</div>
+            <p class="report-date">All-Time Report • Generated on <%= new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) %></p>
+        </div>
+
+        <!-- Key Metrics -->
+        <div class="metric-cards">
+            <div class="metric-card">
+                <div class="title">Total Revenue</div>
+                <div class="value">₹<%= (summary.totalIncome || 0).toFixed(2) %></div>
+            </div>
+            <div class="metric-card">
+                <div class="title">Total Expenses</div>
+                <div class="value" style="color: red;">₹<%= (summary.totalExpenses || 0).toFixed(2) %></div>
+            </div>
+            <div class="metric-card">
+                <div class="title">Net Profit</div>
+                <div class="value" style="color: <%= (summary.grossProfit || 0) >= 0 ? 'green' : 'red' %>;">₹<%= (summary.grossProfit || 0).toFixed(2) %></div>
+            </div>
+        </div>
+
+        <!-- P&L Summary -->
+        <div class="pl-summary">
+            <div class="pl-row"><span class="label">Total Service Income (Billed)</span><span class="value">₹<%= (summary.totalIncome || 0).toFixed(2) %></span></div>
+            <div class="pl-row"><span class="label">Total Cash Received</span><span class="value">₹<%= (summary.totalReceived || 0).toFixed(2) %></span></div>
+            <div class="pl-row"><span class="label">Total Expenses</span><span class="value negative">- ₹<%= (summary.totalExpenses || 0).toFixed(2) %></span></div>
+            <div class="pl-row"><span class="label">Outstanding Receivables</span><span class="value">₹<%= (summary.totalDue || 0).toFixed(2) %></span></div>
+            <div class="pl-row highlight"><span class="label">GROSS PROFIT</span><span class="value">₹<%= (summary.grossProfit || 0).toFixed(2) %></span></div>
+        </div>
+
+        <!-- Income Breakdown -->
+        <div class="section">
+            <h3>📊 Revenue Breakdown by Service</h3>
+            <table class="data-table">
+                <thead><tr><th>Service Type</th><th class="amount">Total Revenue (₹)</th></tr></thead>
+                <tbody>
+                    <% if (summary.serviceBreakdown && summary.serviceBreakdown.length > 0) { %>
+                        <% summary.serviceBreakdown.forEach(function(item) { %>
+                            <tr><td><%= item.service_type %></td><td class="amount">₹<%= parseFloat(item.total || 0).toFixed(2) %></td></tr>
+                        <% }); %>
+                    <% } else { %>
+                        <tr><td colspan="2" style="text-align: center; color: #999;">No data available</td></tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Expense Breakdown -->
+        <div class="section">
+            <h3>📉 Expense Breakdown by Category</h3>
+            <table class="data-table">
+                <thead><tr><th>Category</th><th class="amount">Total Spent (₹)</th></tr></thead>
+                <tbody>
+                    <% if (summary.expenseBreakdown && summary.expenseBreakdown.length > 0) { %>
+                        <% summary.expenseBreakdown.forEach(function(item) { %>
+                            <tr><td><%= item.category %></td><td class="amount">₹<%= parseFloat(item.total || 0).toFixed(2) %></td></tr>
+                        <% }); %>
+                    <% } else { %>
+                        <tr><td colspan="2" style="text-align: center; color: #999;">No data available</td></tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Profit Margin -->
+        <div class="section" style="text-align: center; padding-bottom: 30px;">
+            <p style="font-size: 0.85rem; color: #888;">Profit Margin: <strong style="color: #000; font-size: 1.1rem;"><%= (summary.profitMargin || 0).toFixed(2) %>%</strong></p>
+            <p style="font-size: 0.75rem; color: #aaa; margin-top: 5px;">Gross Profit = Total Billed Income − Total Expenses</p>
+        </div>
+
+        <div class="footer-bar">
+            Generated on <%= new Date().toLocaleString() %> • Confidential Financial Document
+        </div>
+    </div>
+</body>
+</html>
