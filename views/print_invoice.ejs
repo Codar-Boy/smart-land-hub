@@ -85,6 +85,9 @@
                     <tr>
                         <th>#</th>
                         <th>Service Description</th>
+                        <th>Qty</th>
+                        <th>Rate</th>
+                        <th>Discount</th>
                         <th class="amount">Amount (₹)</th>
                     </tr>
                 </thead>
@@ -92,6 +95,9 @@
                     <tr>
                         <td>1</td>
                         <td><%= s.service_type %></td>
+                        <td><%= s.quantity || 1 %></td>
+                        <td>₹<%= parseFloat(s.rate || 0).toFixed(2) %></td>
+                        <td>₹<%= parseFloat(s.discount || 0).toFixed(2) %></td>
                         <td class="amount">₹<%= parseFloat(s.total_amount).toFixed(2) %></td>
                     </tr>
                 </tbody>

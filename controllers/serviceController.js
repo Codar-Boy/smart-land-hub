@@ -19,11 +19,13 @@ exports.getDashboard = async (req, res) => {
   };
 
   try {
-    // Always fetch settings and service types for all pages
+    // Always fetch settings, service types and expense categories for all pages
     const settingsResult = await pool.query('SELECT * FROM settings LIMIT 1');
     const typesResult = await pool.query('SELECT * FROM service_types ORDER BY name ASC');
+    const expenseCategoriesResult = await pool.query('SELECT * FROM expense_categories ORDER BY name ASC');
     data.config = settingsResult.rows[0] || {};
     data.serviceTypes = typesResult.rows;
+    data.expenseCategories = expenseCategoriesResult.rows;
 
     if (section === 'overview') {
       const today = new Date().toISOString().split('T')[0];
@@ -126,9 +128,14 @@ exports.getDashboard = async (req, res) => {
       data.summary.profitMargin = data.summary.totalIncome > 0 ? (data.summary.grossProfit / data.summary.totalIncome * 100) : 0;
     }
     
-    res.render('dashboard', { 
+    // Pass flash message to view and clear it from session
+    const flash = req.session.flash || null;
+    if (req.session.flash) delete req.session.flash;
+
+    res.render('dashboard', {
       username: req.session.user,
       activeSection: section,
+      flash,
       ...data
     });
   } catch (err) {
@@ -165,11 +172,18 @@ exports.getEditPage = async (req, res) => {
 };
 
 exports.addService = async (req, res) => {
-  const { date, customer_name, mobile_no, service_type, total_amount, received_amount, due_amount, payment_mode, notes } = req.body;
+  const { date, customer_name, mobile_no, service_type, quantity, rate, discount, received_amount, payment_mode, notes } = req.body;
   try {
+    const parsedQuantity = parseInt(quantity, 10) || 1;
+    const parsedRate = parseFloat(rate) || 0;
+    const parsedDiscount = parseFloat(discount) || 0;
+    const parsedReceived = parseFloat(received_amount) || 0;
+    const totalAmount = Math.max(0, parsedQuantity * parsedRate - parsedDiscount);
+    const dueAmount = Math.max(0, totalAmount - parsedReceived);
+
     await pool.query(
-      'INSERT INTO services (date, customer_name, mobile_no, service_type, total_amount, received_amount, due_amount, payment_mode, notes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
-      [date, customer_name, mobile_no, service_type, total_amount, received_amount, due_amount, payment_mode, notes]
+      'INSERT INTO services (date, customer_name, mobile_no, service_type, quantity, rate, discount, total_amount, received_amount, due_amount, payment_mode, notes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',
+      [date, customer_name, mobile_no, service_type, parsedQuantity, parsedRate, parsedDiscount, totalAmount, parsedReceived, dueAmount, payment_mode, notes]
     );
     res.redirect('/dashboard/services');
   } catch (err) {
@@ -180,11 +194,18 @@ exports.addService = async (req, res) => {
 
 exports.editService = async (req, res) => {
   const { id } = req.params;
-  const { date, customer_name, mobile_no, service_type, total_amount, received_amount, due_amount, payment_mode, notes } = req.body;
+  const { date, customer_name, mobile_no, service_type, quantity, rate, discount, received_amount, payment_mode, notes } = req.body;
   try {
+    const parsedQuantity = parseInt(quantity, 10) || 1;
+    const parsedRate = parseFloat(rate) || 0;
+    const parsedDiscount = parseFloat(discount) || 0;
+    const parsedReceived = parseFloat(received_amount) || 0;
+    const totalAmount = Math.max(0, parsedQuantity * parsedRate - parsedDiscount);
+    const dueAmount = Math.max(0, totalAmount - parsedReceived);
+
     await pool.query(
-      'UPDATE services SET date=$1, customer_name=$2, mobile_no=$3, service_type=$4, total_amount=$5, received_amount=$6, due_amount=$7, payment_mode=$8, notes=$9 WHERE id=$10',
-      [date, customer_name, mobile_no, service_type, total_amount, received_amount, due_amount, payment_mode, notes, id]
+      'UPDATE services SET date=$1, customer_name=$2, mobile_no=$3, service_type=$4, quantity=$5, rate=$6, discount=$7, total_amount=$8, received_amount=$9, due_amount=$10, payment_mode=$11, notes=$12 WHERE id=$13',
+      [date, customer_name, mobile_no, service_type, parsedQuantity, parsedRate, parsedDiscount, totalAmount, parsedReceived, dueAmount, payment_mode, notes, id]
     );
     res.redirect('/dashboard/services');
   } catch (err) {
@@ -197,24 +218,36 @@ exports.receivePayment = async (req, res) => {
   const { id } = req.params;
   const { pay_amount } = req.body;
   const payment = parseFloat(pay_amount) || 0;
-  
+
+  // Bug fix: reject zero or negative payment
+  if (payment <= 0) {
+    return res.redirect('/dashboard/due-tracking');
+  }
+
   try {
-    // Get current record
-    const result = await pool.query('SELECT * FROM services WHERE id = $1', [id]);
+    const result = await pool.query(
+      'SELECT total_amount, received_amount, due_amount FROM services WHERE id = $1',
+      [id]
+    );
     if (result.rows.length === 0) return res.redirect('/dashboard/due-tracking');
-    
+
     const s = result.rows[0];
-    const newReceived = parseFloat(s.received_amount) + payment;
-    const newDue = parseFloat(s.total_amount) - newReceived;
-    
+    const currentDue    = parseFloat(s.due_amount);
+    const currentTotal  = parseFloat(s.total_amount);
+
+    // Bug fix: cap payment at remaining due — prevents overpayment / negative due
+    const cappedPayment = Math.min(payment, currentDue);
+    const newReceived   = Math.min(parseFloat(s.received_amount) + cappedPayment, currentTotal);
+    const newDue        = Math.max(0, currentTotal - newReceived);
+
     await pool.query(
       'UPDATE services SET received_amount=$1, due_amount=$2 WHERE id=$3',
       [newReceived, newDue, id]
     );
-    
+
     res.redirect('/dashboard/due-tracking');
   } catch (err) {
-    console.error(err);
+    console.error('[PAYMENT] Error:', err.message);
     res.status(500).send('Error processing payment');
   }
 };
@@ -338,28 +371,106 @@ exports.updatePassword = async (req, res) => {
   const { current_password, new_password, confirm_password } = req.body;
   const username = req.session.user;
 
+  // Input validation
+  if (!current_password || !new_password || !confirm_password) {
+    req.session.flash = { type: 'error', message: 'All password fields are required.' };
+    return res.redirect('/dashboard/settings');
+  }
+
+  // Bug fix: minimum password length (was missing)
+  if (new_password.length < 8) {
+    req.session.flash = { type: 'error', message: 'New password must be at least 8 characters.' };
+    return res.redirect('/dashboard/settings');
+  }
+
+  if (new_password !== confirm_password) {
+    req.session.flash = { type: 'error', message: 'New passwords do not match.' };
+    return res.redirect('/dashboard/settings');
+  }
+
   try {
-    // Verify current password
-    const userRes = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
-    if (userRes.rows.length === 0) return res.status(404).send('User not found');
+    // Select only needed fields — do not expose full user row
+    const userRes = await pool.query(
+      'SELECT id, username, password FROM users WHERE username = $1',
+      [username]
+    );
+    if (userRes.rows.length === 0) {
+      req.session.flash = { type: 'error', message: 'User not found.' };
+      return res.redirect('/dashboard/settings');
+    }
 
     const user = userRes.rows[0];
     const match = await bcrypt.compare(current_password, user.password);
-    
+
     if (!match) {
-      return res.status(400).send('Current password incorrect');
+      req.session.flash = { type: 'error', message: 'Current password is incorrect.' };
+      return res.redirect('/dashboard/settings');
     }
 
-    if (new_password !== confirm_password) {
-      return res.status(400).send('New passwords do not match');
-    }
+    const hashedNewPassword = await bcrypt.hash(new_password, 12); // cost factor 12
+    await pool.query(
+      'UPDATE users SET password = $1 WHERE username = $2',
+      [hashedNewPassword, username]
+    );
 
-    const hashedNewPassword = await bcrypt.hash(new_password, 10);
-    await pool.query('UPDATE users SET password = $1 WHERE username = $2', [hashedNewPassword, username]);
-    res.send('<script>alert("Password updated successfully!"); window.location.href="/dashboard/settings";</script>');
+    // Bug fix: was sending raw <script> — now using session flash + redirect
+    req.session.flash = { type: 'success', message: 'Password updated successfully!' };
+    res.redirect('/dashboard/settings');
   } catch (err) {
-    console.error(err);
+    console.error('[PASSWORD] Update error:', err.message);
     res.status(500).send('Error updating password');
+  }
+};
+
+exports.updateUsername = async (req, res) => {
+  const { new_username, current_password } = req.body;
+  const username = req.session.user;
+
+  if (!new_username || !current_password) {
+    req.session.flash = { type: 'error', message: 'User ID and Password are required.' };
+    return res.redirect('/dashboard/settings');
+  }
+
+  const trimmedNewUsername = new_username.trim();
+  
+  if (trimmedNewUsername.length < 3) {
+    req.session.flash = { type: 'error', message: 'User ID must be at least 3 characters long.' };
+    return res.redirect('/dashboard/settings');
+  }
+
+  try {
+    const userRes = await pool.query('SELECT id, username, password FROM users WHERE username = $1', [username]);
+    if (userRes.rows.length === 0) {
+      req.session.flash = { type: 'error', message: 'User not found.' };
+      return res.redirect('/dashboard/settings');
+    }
+
+    const user = userRes.rows[0];
+    const match = await bcrypt.compare(current_password, user.password);
+
+    if (!match) {
+      req.session.flash = { type: 'error', message: 'Current password is incorrect.' };
+      return res.redirect('/dashboard/settings');
+    }
+
+    // Check if new username is already taken
+    const existingUser = await pool.query('SELECT id FROM users WHERE username = $1', [trimmedNewUsername]);
+    if (existingUser.rows.length > 0) {
+      req.session.flash = { type: 'error', message: 'This User ID is already taken.' };
+      return res.redirect('/dashboard/settings');
+    }
+
+    await pool.query('UPDATE users SET username = $1 WHERE username = $2', [trimmedNewUsername, username]);
+    
+    // Update session with new username
+    req.session.user = trimmedNewUsername;
+    req.session.save(() => {
+      req.session.flash = { type: 'success', message: 'User ID updated successfully!' };
+      res.redirect('/dashboard/settings');
+    });
+  } catch (err) {
+    console.error('[USERNAME] Update error:', err.message);
+    res.status(500).send('Error updating user ID');
   }
 };
 
@@ -385,19 +496,43 @@ exports.deleteServiceType = async (req, res) => {
   }
 };
 
+exports.addExpenseCategory = async (req, res) => {
+  const { name } = req.body;
+  try {
+    await pool.query('INSERT INTO expense_categories (name) VALUES ($1) ON CONFLICT DO NOTHING', [name]);
+    res.redirect('/dashboard/settings');
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error adding expense category');
+  }
+};
+
+exports.deleteExpenseCategory = async (req, res) => {
+  const { id } = req.params;
+  try {
+    await pool.query('DELETE FROM expense_categories WHERE id = $1', [id]);
+    res.redirect('/dashboard/settings');
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error deleting expense category');
+  }
+};
+
 exports.exportBackup = async (req, res) => {
   try {
     const services = await pool.query('SELECT * FROM services');
     const expenses = await pool.query('SELECT * FROM expenses');
     const settings = await pool.query('SELECT * FROM settings');
     const types = await pool.query('SELECT * FROM service_types');
+    const expenseCategories = await pool.query('SELECT * FROM expense_categories');
 
     const backupData = {
       timestamp: new Date().toISOString(),
       services: services.rows,
       expenses: expenses.rows,
       settings: settings.rows,
-      serviceTypes: types.rows
+      serviceTypes: types.rows,
+      expenseCategories: expenseCategories.rows
     };
 
     res.setHeader('Content-Type', 'application/json');

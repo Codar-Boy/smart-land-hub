@@ -42,12 +42,24 @@
                     </td>
                 </tr>
                 <tr>
+                    <td><i class="fas fa-boxes"></i> Quantity:</td>
+                    <td><input type="number" name="quantity" id="eq" min="1" step="1" value="<%= s.quantity || 1 %>" style="width: 100%;" oninput="updateTotals()"></td>
+                </tr>
+                <tr>
+                    <td><i class="fas fa-tags"></i> Rate:</td>
+                    <td><input type="number" name="rate" id="erate" step="0.01" min="0" value="<%= s.rate || 0 %>" style="width: 100%;" oninput="updateTotals()"></td>
+                </tr>
+                <tr>
+                    <td><i class="fas fa-percent"></i> Discount:</td>
+                    <td><input type="number" name="discount" id="ediscount" step="0.01" min="0" value="<%= s.discount || 0 %>" style="width: 100%;" oninput="updateTotals()"></td>
+                </tr>
+                <tr>
                     <td><i class="fas fa-calculator"></i> Total Bill:</td>
-                    <td><input type="number" name="total_amount" id="et" step="0.01" value="<%= s.total_amount %>" style="width: 100%;" oninput="ed.value=(et.value-er.value).toFixed(2)"></td>
+                    <td><input type="number" name="total_amount" id="et" step="0.01" readonly value="<%= s.total_amount %>" style="width: 100%;" ></td>
                 </tr>
                 <tr>
                     <td><i class="fas fa-cash-register"></i> Received:</td>
-                    <td><input type="number" name="received_amount" id="er" step="0.01" value="<%= s.received_amount %>" style="width: 100%;" oninput="ed.value=(et.value-er.value).toFixed(2)"></td>
+                    <td><input type="number" name="received_amount" id="er" step="0.01" value="<%= s.received_amount %>" style="width: 100%;" oninput="updateTotals()"></td>
                 </tr>
                 <tr>
                     <td><i class="fas fa-hand-holding-dollar"></i> Due:</td>
@@ -75,6 +87,18 @@
             </div>
         </form>
     </div>
+    <script>
+        function updateTotals() {
+            const qty = parseFloat(document.getElementById('eq').value) || 1;
+            const rate = parseFloat(document.getElementById('erate').value) || 0;
+            const discount = parseFloat(document.getElementById('ediscount').value) || 0;
+            const received = parseFloat(document.getElementById('er').value) || 0;
+            const total = Math.max(0, qty * rate - discount);
+            document.getElementById('et').value = total.toFixed(2);
+            document.getElementById('ed').value = Math.max(0, total - received).toFixed(2);
+        }
+        updateTotals();
+    </script>
 </body>
 
 </html>

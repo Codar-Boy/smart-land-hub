@@ -4,59 +4,86 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
+// ─── STARTUP SECURITY CHECK ───────────────────────────────────────────────────
+if (!process.env.SESSION_SECRET) {
+  console.error('[SECURITY ERROR] SESSION_SECRET is not set in .env! Refusing to start.');
+  process.exit(1);
+}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 1. HARDENED SECURITY HEADERS
+// ─── 1. HARDENED SECURITY HEADERS (Helmet + CSP) ─────────────────────────────
 app.use(helmet({
-  contentSecurityPolicy: false, 
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc:  ["'self'"],
+      scriptSrc:   ["'self'", "'unsafe-inline'"],          // inline scripts in dashboard
+      scriptSrcAttr: ["'unsafe-inline'"],                  // allows onclick="" and onsubmit=""
+      styleSrc:    ["'self'", "'unsafe-inline'",
+                    "https://cdnjs.cloudflare.com",
+                    "https://fonts.googleapis.com"],
+      fontSrc:     ["'self'",
+                    "https://cdnjs.cloudflare.com",
+                    "https://fonts.gstatic.com"],
+      imgSrc:      ["'self'", "data:"],
+      formAction:  ["'self'"],                             // forms can only POST to same origin
+      frameAncestors: ["'none'"],                          // clickjacking protection
+    }
+  },
+  crossOriginEmbedderPolicy: false,  // allow CDN fonts/icons to load
 }));
 
-// 2. BRUTE FORCE PROTECTION
+// ─── 2. BRUTE FORCE PROTECTION ────────────────────────────────────────────────
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, 
-  max: 1000, 
-  message: "SYSTEM ALERT: Unusual traffic detected from this IP."
+  windowMs: 15 * 60 * 1000,
+  max: 200,              // reduced from 1000
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: "SYSTEM ALERT: Too many requests from this IP. Try again after 15 minutes.",
 });
 app.use(limiter);
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
-  message: "SECURITY LOCK: Too many login attempts. Access blocked for 15 mins."
+  max: 10,               // reduced from 20 — 10 login attempts per 15 mins is sufficient
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: "SECURITY LOCK: Too many login attempts. Access blocked for 15 mins.",
 });
 app.use('/login', loginLimiter);
 
-// 3. GENERAL MIDDLEWARE
+// ─── 3. GENERAL MIDDLEWARE ────────────────────────────────────────────────────
 app.set('view engine', 'ejs');
 app.use(express.static('public'));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+app.use(express.json({ limit: '10kb' }));
 
-// 4. SECURE SESSION MANAGEMENT
+// ─── 4. SECURE SESSION MANAGEMENT ────────────────────────────────────────────
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'super-secure-terminal-key-1985',
+  secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  name: 'SESSION_ID', // Reverted from __Secure- to avoid browser rejection on HTTP
-  cookie: { 
-    httpOnly: true, // Prevents XSS from reading cookie
-    secure: false,  // Set to true if using HTTPS
-    sameSite: 'lax', // Changed to lax for better dev compatibility
-    maxAge: 24 * 60 * 60 * 1000 // 1 day
+  name: 'SID',           // non-descriptive cookie name
+  cookie: {
+    httpOnly: true,       // XSS protection — JS cannot read this cookie
+    secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+    sameSite: 'lax',      // CSRF protection for cross-site POST requests
+    maxAge: 8 * 60 * 60 * 1000 // 8 hours (reduced from 24h)
   }
 }));
 
-// 5. DATA SANITIZATION & LOGGING
+// ─── 5. SECURITY AUDIT LOGGER ────────────────────────────────────────────────
 app.use((req, res, next) => {
-  // Simple logger for security audits
-  if (req.method === 'POST') {
-    console.log(`[SECURITY LOG] ${new Date().toISOString()} - POST Request to ${req.url} from ${req.ip}`);
+  if (req.method === 'POST' || req.method === 'DELETE') {
+    const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+    console.log(`[SECURITY LOG] ${new Date().toISOString()} - ${req.method} ${req.url} from ${ip}`);
   }
   next();
 });
 
-// Routes
-const authRoutes = require('./routes/authRoutes');
+// ─── 6. ROUTES ────────────────────────────────────────────────────────────────
+const authRoutes    = require('./routes/authRoutes');
 const serviceRoutes = require('./routes/serviceRoutes');
 const expenseRoutes = require('./routes/expenseRoutes');
 
@@ -64,11 +91,16 @@ app.use('/', authRoutes);
 app.use('/', serviceRoutes);
 app.use('/', expenseRoutes);
 
-// 6. 404 & ERROR HANDLING
+// ─── 7. GLOBAL ERROR HANDLER ─────────────────────────────────────────────────
 app.use((req, res) => {
-  res.status(404).send('ERROR 404: RESOURCE NOT FOUND ON THIS TERMINAL');
+  res.status(404).send('ERROR 404: Page not found.');
+});
+
+app.use((err, req, res, next) => {
+  console.error('[SERVER ERROR]', err.message);
+  res.status(500).send('An internal error occurred.');
 });
 
 app.listen(PORT, () => {
-  console.log(`[SYSTEM READY] SECURE TERMINAL RUNNING ON PORT ${PORT}`);
+  console.log(`[SYSTEM READY] Server running on port ${PORT}`);
 });

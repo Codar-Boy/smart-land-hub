@@ -61,6 +61,17 @@
                 </div>
             </header>
 
+            <%# ─── Flash Message ──────────────────────────────── %>
+            <% if (locals.flash) { %>
+              <div style="margin: 10px 20px; padding: 12px 18px; border-radius: 6px;
+                          background: <%= flash.type === 'success' ? '#d4edda' : '#f8d7da' %>;
+                          color: <%= flash.type === 'success' ? '#155724' : '#721c24' %>;
+                          border: 1px solid <%= flash.type === 'success' ? '#c3e6cb' : '#f5c6cb' %>;
+                          font-weight: 600;">
+                <%= flash.type === 'success' ? '✅' : '⚠️' %> <%= flash.message %>
+              </div>
+            <% } %>
+
             <main>
                 <% if (section==='overview' ) { %>
                     <h2><i class="fas fa-chart-line"></i> Dashboard Overview</h2>
@@ -149,35 +160,63 @@
                                     <button
                                         onclick="document.getElementById('addForm').style.display = (document.getElementById('addForm').style.display === 'none' ? 'block' : 'none')">➕
                                         Add New Service Record</button>
-                                    <div id="addForm"
-                                        style="display: none; border: 1px solid #000; padding: 15px; margin-top: 10px;">
+                                    <div id="addForm" class="compact-form" style="display: none;">
                                         <h3>Register New Service</h3>
-                                        <form action="/services/add" method="POST">
-                                            Date: <input type="date" name="date"
-                                                value="<%= new Date().toISOString().split('T')[0] %>" required> |
-                                            Customer: <input type="text" name="customer_name" required> |
-                                            Mobile: <input type="text" name="mobile_no" placeholder="Optional">
-                                            <br><br>
-                                            Type: <select name="service_type" required>
-                                                <% if (locals.serviceTypes) { %>
-                                                    <% serviceTypes.forEach(function(t) { %>
-                                                        <option>
-                                                            <%= t.name %>
-                                                        </option>
+                                        <form class="compact-form-grid" action="/services/add" method="POST">
+                                            <div>
+                                                <label for="add-date">Date</label>
+                                                <input type="date" id="add-date" name="date" value="<%= new Date().toISOString().split('T')[0] %>" required>
+                                            </div>
+                                            <div>
+                                                <label for="add-customer">Customer</label>
+                                                <input type="text" id="add-customer" name="customer_name" required onblur="fillCustomerDetails()">
+                                            </div>
+                                            <div>
+                                                <label for="add-mobile">Mobile</label>
+                                                <input type="text" id="add-mobile" name="mobile_no" placeholder="Optional" onblur="fillCustomerDetails()">
+                                            </div>
+                                            <div>
+                                                <label for="add-service-type">Type</label>
+                                                <select id="add-service-type" name="service_type" required>
+                                                    <% if (locals.serviceTypes) { %>
+                                                        <% serviceTypes.forEach(function(t) { %>
+                                                            <option><%= t.name %></option>
                                                         <% }); %>
-                                                            <% } %>
-                                            </select> |
-                                            Total: <input type="number" name="total_amount" id="t"
-                                                oninput="d.value=(t.value-r.value).toFixed(2)" required> |
-                                            Received: <input type="number" name="received_amount" id="r"
-                                                oninput="d.value=(t.value-r.value).toFixed(2)" required> |
-                                            Due: <input type="number" name="due_amount" id="d" readonly>
-                                            <br><br>
-                                            Notes: <textarea name="notes" placeholder="Optional notes" rows="2" cols="50"></textarea>
-                                            <br><br>
-                                            <button type="submit">Save Record</button>
-                                            <button type="button"
-                                                onclick="document.getElementById('addForm').style.display='none'">Cancel</button>
+                                                    <% } %>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label for="qty">Qty</label>
+                                                <input type="number" name="quantity" id="qty" value="1" min="1" step="1" required oninput="updateAddTotals()">
+                                            </div>
+                                            <div>
+                                                <label for="rate">Rate</label>
+                                                <input type="number" name="rate" id="rate" value="0" min="0" step="0.01" required oninput="updateAddTotals()">
+                                            </div>
+                                            <div>
+                                                <label for="discount">Discount</label>
+                                                <input type="number" name="discount" id="discount" value="0" min="0" step="0.01" oninput="updateAddTotals()">
+                                            </div>
+                                            <div>
+                                                <label for="t">Total</label>
+                                                <input type="number" name="total_amount" id="t" readonly value="0.00">
+                                            </div>
+                                            <div>
+                                                <label for="r">Received</label>
+                                                <input type="number" name="received_amount" id="r" value="0.00" step="0.01" required oninput="updateAddTotals()">
+                                            </div>
+                                            <div>
+                                                <label for="d">Due</label>
+                                                <input type="number" name="due_amount" id="d" readonly value="0.00">
+                                            </div>
+                                            <div class="full-width">
+                                                <label for="add-notes">Notes</label>
+                                                <textarea id="add-notes" name="notes" placeholder="Optional notes" rows="2"></textarea>
+                                            </div>
+                                            <div class="form-actions full-width">
+                                                <button type="submit">Save Record</button>
+                                                <button type="button" onclick="document.getElementById('addForm').style.display='none'">Cancel</button>
+                                            </div>
                                         </form>
                                     </div>
                                     <% if (locals.editService) { %>
@@ -206,12 +245,24 @@
                                                 </select>
                                             </div>
                                             <div>
+                                                <label for="edit-quantity">Qty</label>
+                                                <input type="number" id="edit-quantity" name="quantity" min="1" step="1" value="<%= editService.quantity || 1 %>" required oninput="updateEditTotals()">
+                                            </div>
+                                            <div>
+                                                <label for="edit-rate">Rate</label>
+                                                <input type="number" id="edit-rate" name="rate" step="0.01" min="0" value="<%= editService.rate || 0 %>" required oninput="updateEditTotals()">
+                                            </div>
+                                            <div>
+                                                <label for="edit-discount">Discount</label>
+                                                <input type="number" id="edit-discount" name="discount" step="0.01" min="0" value="<%= editService.discount || 0 %>" oninput="updateEditTotals()">
+                                            </div>
+                                            <div>
                                                 <label for="edit-total">Total</label>
-                                                <input type="number" id="edit-total" name="total_amount" step="0.01" value="<%= editService.total_amount %>" oninput="editDue()">
+                                                <input type="number" id="edit-total" name="total_amount" step="0.01" value="<%= editService.total_amount %>" readonly>
                                             </div>
                                             <div>
                                                 <label for="edit-received">Received</label>
-                                                <input type="number" id="edit-received" name="received_amount" step="0.01" value="<%= editService.received_amount %>" oninput="editDue()">
+                                                <input type="number" id="edit-received" name="received_amount" step="0.01" value="<%= editService.received_amount %>" oninput="updateEditTotals()">
                                             </div>
                                             <div>
                                                 <label for="edit-due">Due</label>
@@ -262,7 +313,9 @@
                                                         <% if (s.mobile_no) { %>
                                                             <a href="https://wa.me/91<%= s.mobile_no %>?text=Hi%20<%= encodeURIComponent(s.customer_name) %>,%20your%20invoice%20%23<%= s.id %>%20of%20₹<%= s.total_amount %>%20(Due:%20₹<%= s.due_amount %>)%20from%20<%= encodeURIComponent(config.business_name || 'our business') %>.%20Thank%20you!" target="_blank" title="WhatsApp" style="color: green;"><i class="fab fa-whatsapp"></i></a>
                                                         <% } %>
-                                                        <a href="/services/delete/<%= s.id %>" onclick="return confirm('Delete this record?')" title="Delete" style="color: red;"><i class="fas fa-trash"></i></a>
+                                                        <form method="POST" action="/services/delete/<%= s.id %>" style="display:inline;">
+                                                          <button type="submit" onclick="return confirm('Delete this record? This cannot be undone.')" title="Delete" style="background:none;border:none;cursor:pointer;color:red;padding:0;font-size:inherit;"><i class="fas fa-trash"></i></button>
+                                                        </form>
                                                     </td>
                                                 </tr>
                                             <% }); %>
@@ -277,6 +330,83 @@
                                                 row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
                                             });
                                         }
+                                        const servicesData = <%- JSON.stringify(services || []) %>;
+                                        const customerLookup = {};
+                                        const mobileLookup = {};
+                                        servicesData.forEach(function(s) {
+                                            if (s.customer_name) {
+                                                customerLookup[s.customer_name.trim().toLowerCase()] = {
+                                                    mobile: s.mobile_no || '',
+                                                    service_type: s.service_type || ''
+                                                };
+                                            }
+                                            if (s.mobile_no) {
+                                                mobileLookup[s.mobile_no.trim()] = {
+                                                    customer_name: s.customer_name || '',
+                                                    service_type: s.service_type || ''
+                                                };
+                                            }
+                                        });
+                                        function fillCustomerDetails() {
+                                            const customerInput = document.getElementById('add-customer');
+                                            const mobileInput = document.getElementById('add-mobile');
+                                            const name = customerInput.value.trim();
+                                            const mobile = mobileInput.value.trim();
+
+                                            const typeSelect = document.querySelector('select[name="service_type"]');
+                                            if (name && customerLookup[name.toLowerCase()]) {
+                                                const match = customerLookup[name.toLowerCase()];
+                                                if (!mobile && match.mobile) {
+                                                    mobileInput.value = match.mobile;
+                                                }
+                                                if (typeSelect && match.service_type) {
+                                                    Array.from(typeSelect.options).forEach(opt => {
+                                                        if (opt.value === match.service_type) {
+                                                            opt.selected = true;
+                                                        }
+                                                    });
+                                                }
+                                            }
+                                            if (mobile && mobileLookup[mobile]) {
+                                                const match = mobileLookup[mobile];
+                                                if (!name && match.customer_name) {
+                                                    customerInput.value = match.customer_name;
+                                                }
+                                                if (typeSelect && match.service_type) {
+                                                    Array.from(typeSelect.options).forEach(opt => {
+                                                        if (opt.value === match.service_type) {
+                                                            opt.selected = true;
+                                                        }
+                                                    });
+                                                }
+                                            }
+                                        }
+                                        function updateAddTotals() {
+                                            const qty = parseFloat(document.getElementById('qty').value) || 1;
+                                            const rate = parseFloat(document.getElementById('rate').value) || 0;
+                                            const discount = parseFloat(document.getElementById('discount').value) || 0;
+                                            const received = parseFloat(document.getElementById('r').value) || 0;
+                                            const total = Math.max(0, qty * rate - discount);
+                                            document.getElementById('t').value = total.toFixed(2);
+                                            document.getElementById('d').value = Math.max(0, total - received).toFixed(2);
+                                        }
+                                        function updateEditTotals() {
+                                            const qty = parseFloat(document.getElementById('edit-quantity').value) || 1;
+                                            const rate = parseFloat(document.getElementById('edit-rate').value) || 0;
+                                            const discount = parseFloat(document.getElementById('edit-discount').value) || 0;
+                                            const received = parseFloat(document.getElementById('edit-received').value) || 0;
+                                            const total = Math.max(0, qty * rate - discount);
+                                            document.getElementById('edit-total').value = total.toFixed(2);
+                                            document.getElementById('edit-due').value = Math.max(0, total - received).toFixed(2);
+                                        }
+                                        document.addEventListener('DOMContentLoaded', function() {
+                                            if (document.getElementById('edit-quantity')) {
+                                                updateEditTotals();
+                                            }
+                                            if (document.getElementById('qty')) {
+                                                updateAddTotals();
+                                            }
+                                        });
                                         function exportCSV() {
                                             const rows = document.querySelectorAll('#servicesTable tr');
                                             let csv = '';
@@ -365,10 +495,16 @@
                                                             <div>
                                                                 <label for="add-exp-category">Category</label>
                                                                 <select id="add-exp-category" name="category">
-                                                                    <option>Utilities</option>
-                                                                    <option>Rent</option>
-                                                                    <option>Salary</option>
-                                                                    <option>Others</option>
+                                                                    <% if (locals.expenseCategories && expenseCategories.length > 0) { %>
+                                                                        <% expenseCategories.forEach(function(c) { %>
+                                                                            <option><%= c.name %></option>
+                                                                        <% }); %>
+                                                                    <% } else { %>
+                                                                        <option>Utilities</option>
+                                                                        <option>Rent</option>
+                                                                        <option>Salary</option>
+                                                                        <option>Others</option>
+                                                                    <% } %>
                                                                 </select>
                                                             </div>
                                                             <button type="submit">Add Expense</button>
@@ -393,10 +529,16 @@
                                                             <div>
                                                                 <label for="edit-exp-category">Category</label>
                                                                 <select id="edit-exp-category" name="category">
-                                                                    <option <%= editExpense.category === 'Utilities' ? 'selected' : '' %>>Utilities</option>
-                                                                    <option <%= editExpense.category === 'Rent' ? 'selected' : '' %>>Rent</option>
-                                                                    <option <%= editExpense.category === 'Salary' ? 'selected' : '' %>>Salary</option>
-                                                                    <option <%= editExpense.category === 'Others' ? 'selected' : '' %>>Others</option>
+                                                                    <% if (locals.expenseCategories && expenseCategories.length > 0) { %>
+                                                                        <% expenseCategories.forEach(function(c) { %>
+                                                                            <option <%= editExpense.category === c.name ? 'selected' : '' %>><%= c.name %></option>
+                                                                        <% }); %>
+                                                                    <% } else { %>
+                                                                        <option <%= editExpense.category === 'Utilities' ? 'selected' : '' %>>Utilities</option>
+                                                                        <option <%= editExpense.category === 'Rent' ? 'selected' : '' %>>Rent</option>
+                                                                        <option <%= editExpense.category === 'Salary' ? 'selected' : '' %>>Salary</option>
+                                                                        <option <%= editExpense.category === 'Others' ? 'selected' : '' %>>Others</option>
+                                                                    <% } %>
                                                                 </select>
                                                             </div>
                                                             <button type="submit">Update Expense</button>
@@ -430,7 +572,9 @@
                                                                     </td>
                                                                     <td>
                                                                         <a href="/expenses/edit/<%= e.id %>" title="Edit"><i class="fas fa-edit"></i></a>
-                                                                        <a href="/expenses/delete/<%= e.id %>" onclick="return confirm('Delete this expense?')" title="Delete" style="color: red;"><i class="fas fa-trash"></i></a>
+                                                                        <form method="POST" action="/expenses/delete/<%= e.id %>" style="display:inline;">
+                                                                          <button type="submit" onclick="return confirm('Delete this expense? This cannot be undone.')" title="Delete" style="background:none;border:none;cursor:pointer;color:red;padding:0;font-size:inherit;"><i class="fas fa-trash"></i></button>
+                                                                        </form>
                                                                     </td>
                                                                 </tr>
                                                                 <% }); %>
@@ -1092,7 +1236,30 @@
                                                                                                                 <br>
                                                                                                                 <fieldset>
                                                                                                                     <legend>
-                                                                                                                        3.
+                                                                                                                        3. Change User ID
+                                                                                                                    </legend>
+                                                                                                                    <form action="/settings/username" method="POST">
+                                                                                                                        <table border="0" cellpadding="5">
+                                                                                                                            <tr>
+                                                                                                                                <td>New User ID:</td>
+                                                                                                                                <td><input type="text" name="new_username" required></td>
+                                                                                                                            </tr>
+                                                                                                                            <tr>
+                                                                                                                                <td>Current Password:</td>
+                                                                                                                                <td><input type="password" name="current_password" required></td>
+                                                                                                                            </tr>
+                                                                                                                            <tr>
+                                                                                                                                <td></td>
+                                                                                                                                <td><button type="submit">Update User ID</button></td>
+                                                                                                                            </tr>
+                                                                                                                        </table>
+                                                                                                                    </form>
+                                                                                                                </fieldset>
+
+                                                                                                                <br>
+                                                                                                                <fieldset>
+                                                                                                                    <legend>
+                                                                                                                        4.
                                                                                                                         Service
                                                                                                                         Category
                                                                                                                         Manager
@@ -1120,10 +1287,10 @@
                                                                                                                                 {
                                                                                                                                 %>
                                                                                                                                 <li>
-                                                                                                                                    <%= t.name
-                                                                                                                                        %>
-                                                                                                                                        <a href="/settings/service-types/delete/<%= t.id %>"
-                                                                                                                                            style="color: red;">[Delete]</a>
+                                                                                                                                    <%= t.name %>
+                                                                                                                                    <form method="POST" action="/settings/service-types/delete/<%= t.id %>" style="display:inline;">
+                                                                                                                                      <button type="submit" onclick="return confirm('Delete this service type?')" style="background:none;border:none;cursor:pointer;color:red;padding:0;">[Delete]</button>
+                                                                                                                                    </form>
                                                                                                                                 </li>
                                                                                                                                 <% });
                                                                                                                                     %>
@@ -1135,7 +1302,43 @@
                                                                                                                 <br>
                                                                                                                 <fieldset>
                                                                                                                     <legend>
-                                                                                                                        4.
+                                                                                                                        5.
+                                                                                                                        Expense
+                                                                                                                        Category
+                                                                                                                        Manager
+                                                                                                                    </legend>
+                                                                                                                    <form
+                                                                                                                        action="/settings/expense-categories/add"
+                                                                                                                        method="POST">
+                                                                                                                        New
+                                                                                                                        Category:
+                                                                                                                        <input
+                                                                                                                            type="text"
+                                                                                                                            name="name"
+                                                                                                                            required
+                                                                                                                            placeholder="e.g. Stationery">
+                                                                                                                        <button
+                                                                                                                            type="submit">Add
+                                                                                                                            Category</button>
+                                                                                                                    </form>
+                                                                                                                    <ul>
+                                                                                                                        <% if (locals.expenseCategories) { %>
+                                                                                                                            <% expenseCategories.forEach(function(c) { %>
+                                                                                                                                <li>
+                                                                                                                                    <%= c.name %>
+                                                                                                                                    <form method="POST" action="/settings/expense-categories/delete/<%= c.id %>" style="display:inline;">
+                                                                                                                                      <button type="submit" onclick="return confirm('Delete this category?')" style="background:none;border:none;cursor:pointer;color:red;padding:0;">[Delete]</button>
+                                                                                                                                    </form>
+                                                                                                                                </li>
+                                                                                                                            <% }); %>
+                                                                                                                        <% } %>
+                                                                                                                    </ul>
+                                                                                                                </fieldset>
+
+                                                                                                                <br>
+                                                                                                                <fieldset>
+                                                                                                                    <legend>
+                                                                                                                        6.
                                                                                                                         System
                                                                                                                         Maintenance
                                                                                                                     </legend>

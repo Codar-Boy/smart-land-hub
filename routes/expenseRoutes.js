@@ -2,14 +2,15 @@ const express = require('express');
 const router = express.Router();
 const expenseController = require('../controllers/expenseController');
 const authMiddleware = require('../middleware/auth');
+const validateId = require('../middleware/validateId');
 
+// All expense routes require authentication
 router.use(authMiddleware);
 
-// router.get('/dashboard/expenses', expenseController.getExpenses); // Handled by serviceRoutes.js now
-router.post('/expenses/add', expenseController.addExpense);
-router.get('/expenses/edit/:id', expenseController.getEditPage);
-router.post('/expenses/edit/:id', expenseController.editExpense);
-router.get('/expenses/delete/:id', expenseController.deleteExpense);
-router.get('/expenses/print/:id', expenseController.printExpense);
+router.post('/expenses/add',            expenseController.addExpense);
+router.get('/expenses/edit/:id',        validateId, expenseController.getEditPage);
+router.post('/expenses/edit/:id',       validateId, expenseController.editExpense);
+router.post('/expenses/delete/:id',     validateId, expenseController.deleteExpense);  // ✅ POST (was GET)
+router.get('/expenses/print/:id',       validateId, expenseController.printExpense);
 
 module.exports = router;
