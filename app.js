@@ -12,6 +12,7 @@ if (!process.env.SESSION_SECRET) {
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+app.set('trust proxy', 1); // Trust first proxy for secure cookies in production
 
 // ─── 1. HARDENED SECURITY HEADERS (Helmet + CSP) ─────────────────────────────
 app.use(helmet({
